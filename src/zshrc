@@ -1,0 +1,257 @@
+# ----------------------------------------------------------------------------------------------------------------------
+# loaded after zshenv and zprofile for *any interactive shell*, this is useful for managing prompt configurations,
+# aliases, and whatever other "interactive goodies" you desire.
+
+# prefer starship over pl10k if present
+if command_exists starship; then
+  eval "$(starship init zsh)"
+  _NO_PL10K=1
+fi
+
+# ----------------------------------------------------------------------------------------------------------------------
+# set aliases here, before loading omz / setting up completions / etc
+
+# Preferred editor:
+# 1. vim/vi as default (as available)
+# 2. VS Code in same window if $TERM_PROGRAM is set to 'vscode' (e.g. in a VCSCode terminal or remote session)
+# 3. VS Code in new window if not in a remote (ssh) session and VS Code is installed
+if command_exists vim; then
+  export EDITOR=vim
+else
+  export EDITOR=vi
+fi
+if [[ "$TERM_PROGRAM" == "vscode" ]]; then
+  # reasonable to expect `code` works here since we're in VS Code wrapping $somehow
+  export EDITOR='code --wait'
+  alias code='code --reuse-window'
+elif [[ -z "$SSH_CONNECTION" ]] && command_exists code; then
+  export EDITOR='code --new-window --wait'
+  alias code='code --new-window'
+fi
+# and add shorthands for VS Code if we're using it
+if [[ "$EDITOR" = 'code'* ]]; then
+  alias c-='code -'
+  alias c='code'
+fi
+export VISUAL="$EDITOR"
+# otherwise I guess just whatever $EDITOR is. /shrug
+
+if command_exists rg; then
+  alias rg='rg --hidden --smart-case'
+  alias sgrep='rg -i --context=2 --color=auto --hidden'
+else
+  alias sgrep="grep -RIi --context=2 --color=auto --extended-regexp  --exclude-dir={.bzr,CVS,.git,.hg,.svn,obj,objd,bin,build}"
+fi
+alias sg=sgrep
+
+if [[ -z "$SSH_AUTH_SOCK" && $(command_exists ssh-add) ]]; then
+  eval `ssh-agent -s` 2>&1 > /dev/null
+fi
+
+alias less='less -R'
+
+# other aliases for lazy bois
+alias findi='find . -iname'
+alias findn='find . -name'
+alias grepi='grep -i'
+alias tmpssh='ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
+if command_exists fd; then
+  alias fd='fd --hidden'
+fi
+
+# XXX: 2025-08-26 OMZ is really pissing me off. it shits itself with uutils-coreutils instead of GNU coreutils, need
+# to purge OMZ, but for now just don't use this
+# # for macOS, if we have uutils-coreutils homebrew package, prefer `uls` over macOS `ls`
+# if [[ "${OSTYPE#*darwin}" != "$OSTYPE" ]] && brew ls --versions uutils-coreutils >/dev/null 2>&1 && command_exists uls; then
+#   alias ls='uls --color=auto --group-directories-first --classify=auto'
+# fi
+
+# ----------------------------------------------------------------------------------------------------------------------
+# OMZ setup here
+
+# Path to your oh-my-zsh installation.
+export ZSH="$HOME/.oh-my-zsh"
+export ZSH_CUSTOM="$ZSH/custom"
+
+# install omz+pl10k if missing
+if [[ ! -d $ZSH ]]; then
+  sh -c "$(curl -fsSL https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --keep-zshrc --unattended
+  if [[ ! -d "$ZSH_CUSTOM/themes/powerlevel10k" && -z "$_NO_PL10K" ]]; then
+    git clone --depth=1 https://github.com/romkatv/powerlevel10k.git ${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/themes/powerlevel10k
+  fi
+  if [[ ! -d "$ZSH_CUSTOM/plugins/zsh-syntax-highlighting" ]]; then
+    git clone https://github.com/zsh-users/zsh-syntax-highlighting.git ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-syntax-highlighting
+  fi
+  if [[ ! -d "$ZSH_CUSTOM/plugins/fzf-tab" ]]; then
+    git clone https://github.com/Aloxaf/fzf-tab ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/fzf-tab
+  fi
+  echo
+  printf "-%.0s" {1..$COLUMNS}
+  echo "Installed Oh-My-Zsh + Powerlevel 10k (maybe?) + syntax highlighting, this probably works? Good luck!"
+  echo
+  echo
+fi
+
+# Enable Powerlevel10k instant prompt. Should stay close to the top of ~/.zshrc.
+# Initialization code that may require console input (password prompts, [y/n]
+# confirmations, etc.) must go above this block; everything else may go below.
+if [[ -z "$_NO_PL10K" && -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
+  source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
+fi
+
+# Set name of the theme to load --- if set to "random", it will
+# load a random theme each time oh-my-zshis loaded, in which case,
+# to know which specific one was loaded, run: echo $RANDOM_THEME
+# See https://github.com/ohmyzsh/ohmyzsh/wiki/Themes
+[[ -z "$_NO_PL10K" ]] && ZSH_THEME="powerlevel10k/powerlevel10k"
+ZSH_COLORIZE_STYLE="monokai"
+ZSH_COLORIZE_CHROMA_FORMATTER="terminal16m"
+
+# Uncomment the following line to display red dots whilst waiting for completion.
+COMPLETION_WAITING_DOTS="true"
+
+# This is the goober that dumps inverted %/# marks when you `cat` a file with no trailing newline.
+# I do not like that.
+PROMPT_EOL_MARK=''
+
+# always load some default plugins, then conditionally add plugins w/o 1:1 executable to plugin name mappings, and then
+# the ones with 1:1 mappings.
+plugins=(colorize zsh-syntax-highlighting)
+
+# Plugins that don't directly map to the executable name
+command_exists apt && plugins+=(debian)
+command_exists az  && plugins+=(azure)
+
+# Plugins with 1:1 executable mappings, plus a special case for fzf
+for p in brew docker fzf git dotnet kubectl; do
+  if command_exists "$p"; then
+    plugins+=("$p")
+    [[ "$p" == "fzf" ]] && plugins+=(fzf-tab)
+  fi
+done
+
+# Conditional for macOS (OSTYPE contains "darwin")
+if [[ "${OSTYPE#*darwin}" != "$OSTYPE" ]]; then
+  plugins+=(macos)
+fi
+
+# User configuration
+# The following lines were added by compinstall
+
+zstyle ':completion:*' completer _expand _complete _ignored _approximate
+zstyle ':completion:*' list-colors ${(s.:.)LS_COLORS}
+zstyle ':completion:*' list-prompt %SAt %p: Hit TAB for more, or the character to insert%s
+zstyle ':completion:*' max-errors 3
+zstyle ':completion:*' menu select=1
+zstyle ':completion:*' select-prompt %SScrolling active: current selection at %p%s
+zstyle :compinstall filename "$HOME/.zshrc"
+
+# load homebrew completions if available
+command_exists brew && FPATH="$(brew --prefix)/share/zsh/site-functions:${FPATH}"
+
+autoload -Uz compinit
+# End of lines added by compinstall
+# Lines configured by zsh-newuser-install
+HISTFILE=~/.histfile
+HISTSIZE=32767
+SAVEHIST=32767
+setopt appendhistory incappendhistory autocd extendedglob
+unsetopt nomatch auto_removeslash
+bindkey -e
+# End of lines configured by zsh-newuser-install
+
+source $ZSH/oh-my-zsh.sh
+# OMZ forces this back on and it's very rude
+unsetopt sharehistory
+
+# done looking for commands at this point, clean up the function (this lives in zshenv)
+unset -f command_exists
+
+# ----------------------------------------------------------------------------------------------------------------------------------
+# fdc - find a file with a partial name, case-insensitive, if there is a single match open in vs code,
+# otherwise display matches (or message if none)
+function fdc() {
+    if [[ -z "$1" ]]; then
+        echo "Usage: fdc <partial_filename>"
+        return 1
+    fi
+
+    # Use 'fd' if available; otherwise, use 'find'
+    if command -v fd >/dev/null 2>&1; then
+        # Use 'fd' to find files matching the partial name, case-insensitive
+        IFS=$'\n' matches=($(fd -H -t f -i "$1"))
+    else
+        # Use 'find' to find files matching the partial name, case-insensitive
+        IFS=$'\n' matches=($(find -H . -type f -iname "*$1*"))
+    fi
+    unset IFS
+
+    count=${#matches[@]}
+
+    if [[ $count -eq 0 ]]; then
+        echo "No files found matching '$1'"
+    elif [[ $count -eq 1 ]]; then
+        echo "Opening '${matches[1]}'"
+        code "${matches[1]}"
+    else
+        echo "Multiple files found matching '$1':"
+        for file in "${matches[@]}"; do
+            echo "$file"
+        done
+    fi
+}
+
+# ----------------------------------------------------------------------------------------------------------------------------------
+# work goop
+
+vienna_venv() {
+    if [[ "$VIRTUAL_ENV" == "" ]]; then
+        examine_dir=$PWD
+    # when launching in vscode (e.g.) we may already be in a venv
+    elif [[ -n "$VIRTUAL_ENV" && "$1" == "init" ]]; then
+        examine_dir=$VIRTUAL_ENV
+    else
+        return
+    fi
+
+    case $examine_dir in
+        $HOME/src/aml/vienna2*)
+            venv_path=~/.venvs/vienna2
+            ;;
+        $HOME/src/aml/vienna3*)
+            venv_path=~/.venvs/vienna3
+            ;;
+        $HOME/src/aml/*)
+            venv_path=~/.venvs/vienna
+            ;;
+        *)
+            ;;
+    esac
+
+    if [[ -d $venv_path ]]; then
+        export MSFTKUBE_VENV_PATH=$venv_path
+
+        if [[ -z "$VIRTUAL_ENV" ]]; then
+            source $venv_path/bin/activate
+        fi
+
+        if [[ -f "$venv_path/pyvenv.cfg" && `grep 'uv' $venv_path/pyvenv.cfg` ]]; then
+            alias pip='uv pip'
+        fi
+    fi
+
+    if which msftkube > /dev/null; then
+        alias mk=msftkube
+        eval "$(register-python-argcomplete msftkube)"
+    fi
+}
+
+autoload -U add-zsh-hook
+add-zsh-hook chpwd vienna_venv
+# run once to handle direct launches into a venv-eligible directory
+vienna_venv init
+
+# ----------------------------------------------------------------------------------------------------------------------------------
+# To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
+[[ ! -f ~/.p10k.zsh || -n "$_NO_PL10K" ]] || source ~/.p10k.zsh
+

@@ -1,0 +1,68 @@
+# ----------------------------------------------------------------------------------------------------------------------
+# loaded after zshenv for *login shells only* (e.g. Terminal.app, iTerm2, etc.) and useful for setting session-wide
+# configurations
+
+# macOS has cursed zprofile behavior that screws up $PATH with homebrew, so we need to check if we're on macOS, and then
+# re-source brew shellenv.
+if [[ "$(uname -s)" == "Darwin" && -x /opt/homebrew/bin/brew ]]; then
+  eval "$(/opt/homebrew/bin/brew shellenv)"
+fi
+
+# OneDrive dotfiles
+ONEDRIVE="$HOME/OneDrive"
+
+if command_exists wslinfo; then
+ # this is for WSL where you get a symlink to your Windows home directory
+  if [[ -L $HOME/winhome && ! -L $ONEDRIVE ]]; then
+    ln -s $HOME/winhome/OneDrive $HOME/OneDrive
+  fi
+
+  if command_exists socat && command_exists npiperelay.exe; then
+    export SSH_AUTH_SOCK=$HOME/.ssh/ssh-agent.sock
+
+    SSH_AGENT_WORKING=$(ssh-add -l >/dev/null 2>&1; echo $?)
+    if [[ $SSH_AGENT_WORKING != "0" ]]; then
+        # echo "ssh agent not working, killing npiperelay.exe"
+        kill $(ps -auxww | grep "[n]piperelay.exe -ei -s //./pipe/openssh-ssh-agent" | awk '{print $2}') >/dev/null 2>&1
+    fi	
+    
+    ALREADY_RUNNING=$(ps -auxww | grep -q "[n]piperelay.exe -ei -s //./pipe/openssh-ssh-agent"; echo $?)
+    if [[ $ALREADY_RUNNING != "0" ]]; then	
+    
+        if [[ -S $SSH_AUTH_SOCK ]]; then
+            # not expecting the socket to exist as the forwarding command isn't running (http://www.tldp.org/LDP/abs/html/fto.html)
+            echo "removing previous socket..."
+            rm $SSH_AUTH_SOCK >/dev/null 2>&1
+        fi
+        echo "Starting SSH-Agent relay..."
+        # setsid to force new session to keep running
+        # set socat to listen on $SSH_AUTH_SOCK and forward to npiperelay which then forwards to openssh-ssh-agent on windows
+        (setsid socat UNIX-LISTEN:$SSH_AUTH_SOCK,fork EXEC:"npiperelay.exe -ei -s //./pipe/openssh-ssh-agent",nofork &) >/dev/null 2>&1
+    fi
+  fi
+fi
+
+if [[ -d $ONEDRIVE/tools/dotfiles ]]; then
+  for f in `ls -1 $ONEDRIVE/tools/dotfiles`; do
+    if [[ "$f" == "config" ]]; then
+      # a bunch of stuff lives in ~/.config, and it doesn't make sense to keep it all in OneDrive, so nest here
+      mkdir -p $HOME/.config
+      for cf in `ls -1 $ONEDRIVE/tools/dotfiles/config`; do
+        if [[ ! -e $HOME/.config/$cf ]]; then
+          ln -s $ONEDRIVE/tools/dotfiles/config/$cf $HOME/.config/$cf
+        fi
+      done
+    elif [[ ! -e $HOME/.$f ]]; then
+      ln -s $ONEDRIVE/tools/dotfiles/$f $HOME/.$f
+    fi
+  done
+fi
+
+if [[ -f $ONEDRIVE/Documents/PowerShell/profile.ps1 ]]; then
+  if [[ ! -d $HOME/.config/powershell ]]; then
+    mkdir -p $HOME/.config/powershell
+  fi
+  if [[ ! -e $HOME/.config/powershell/profile.ps1 ]]; then
+    ln -s $ONEDRIVE/Documents/PowerShell/profile.ps1 $HOME/.config/powershell/profile.ps1
+  fi
+fi

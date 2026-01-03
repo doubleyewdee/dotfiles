@@ -1,0 +1,64 @@
+# ----------------------------------------------------------------------------------------------------------------------
+# loaded first for all shells (interactive or otherwise) and useful for setting up any environment variables that you
+# expect to "just work" in all shells, interactive or not.
+
+# load homebrew environment if available
+if test -d /opt/homebrew; then
+  eval "$(/opt/homebrew/bin/brew shellenv)"
+elif test -d /home/linuxbrew/.linuxbrew; then
+  eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+fi
+
+command_exists() {
+  (( $+commands[$1] ))
+}
+
+# look for Linux/macOS user-mode .NET install in the usual place and bring it in if so
+if test -d $HOME/.dotnet; then
+  export DOTNET_ROOT=$HOME/.dotnet
+  export PATH=$PATH:$DOTNET_ROOT
+  if test -d $DOTNET_ROOT/tools; then
+    export PATH=$PATH:$DOTNET_ROOT/tools
+  fi
+fi
+
+if command_exists go; then
+  export GOPATH="$HOME/.go"
+  if test ! -d $GOPATH; then
+    mkdir -p $GOPATH
+  fi
+  export PATH="$PATH:$GOPATH"
+fi
+
+# ruby gems for adam sandler
+if test -d $HOME/.gems && test -d $HOME/.gems/bin; then
+  export GEM_HOME="$HOME/.gems"
+  export PATH="$PATH:$GEM_HOME/bin"
+fi
+
+# depending on host type you might get `dircolors` (gnu coreutils) directly or, for macOS, have `udircolors` via
+# uutils-coreutils (the Rust `coreutils` version because, really, GNU kinda sucks and RMS literally eats stuff off his
+# feet and I just can't)
+if test -f $HOME/.dircolors; then
+  if command_exists dircolors; then
+    eval $(dircolors -b $HOME/.dircolors)
+  elif command_exists udircolors; then
+    eval $(udircolors -b $HOME/.dircolors)
+  fi
+fi
+
+# ----------------------------------------------------------------------------------------------------------------------------------
+# work goop
+# XXX: this almost certainly needs to move to some direnv config or something, terrible baseline and should not be in
+# my general dotfiles
+
+if test -n "$CPUTYPE" && test "$CPUTYPE" = "arm64"; then
+  export DOCKER_DEFAULT_PLATFORM=linux/amd64
+fi
+
+if test -d $HOME/.ev2; then
+  export PATH="$HOME/.ev2:$PATH"
+fi
+
+# trying this out to get the credential provider to work with Entra instead of ADO PATs? no idea if this should help
+export NUGET_CREDENTIALPROVIDER_FORCE_CANSHOWDIALOG_TO="true"
