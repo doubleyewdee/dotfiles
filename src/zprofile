@@ -1,23 +1,43 @@
+# The following lines were added by Docker Desktop to add commands to your PATH.
+export PATH="$PATH:/Users/wd/.docker/bin"
+# End of Docker Desktop section.
+
 # ----------------------------------------------------------------------------------------------------------------------
 # loaded after zshenv for *login shells only* (e.g. Terminal.app, iTerm2, etc.) and useful for setting session-wide
 # configurations
 
-# macOS has cursed zprofile behavior that screws up $PATH with homebrew, so we need to check if we're on macOS, and then
+# macOS has cursed zprofile behavior that screws up environment variable handling
+# $PATH with homebrew, so we need to check if we're on macOS, and then
 # re-source brew shellenv.
-if [[ "$(uname -s)" == "Darwin" && -x /opt/homebrew/bin/brew ]]; then
-  eval "$(/opt/homebrew/bin/brew shellenv)"
+if [[ "$(uname -s)" == "Darwin" ]]; then
+  if [[ "$(uname -s)" == "Darwin" && -x /opt/homebrew/bin/brew ]]; then
+    eval "$(/opt/homebrew/bin/brew shellenv)"
+
+    # the wonderful powershell folks have changed their homebrew formula to install dotnet and powershell, but there is
+    # no way in homebrew to have >1 SDK installed and usable at the same time. fall back to local and ensure it is IN
+    # FRONT of homebrew paths.
+    if [[ -n "$DOTNET_ROOT" ]]; then
+      path=($DOTNET_ROOT $path)
+    fi
+  fi
+
+  # use 1Password as SSH agent on macOS if auth socket is where we expect (this also prevents macOS from giving me
+  # its own $SSH_AUTH_SOCK, a thing it appears to wish to do)
+  if [[ -S "$HOME/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock" ]]; then
+    export SSH_AUTH_SOCK="$HOME/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
+  fi
 fi
 
 # OneDrive dotfiles
 ONEDRIVE="$HOME/OneDrive"
 
-if command_exists wslinfo; then
+if (( $+commands[wslinfo] )); then
  # this is for WSL where you get a symlink to your Windows home directory
   if [[ -L $HOME/winhome && ! -L $ONEDRIVE ]]; then
     ln -s $HOME/winhome/OneDrive $HOME/OneDrive
   fi
 
-  if command_exists socat && command_exists npiperelay.exe; then
+  if (( $+commands[socat] )) && (( $+commands[npiperelay.exe] )); then
     export SSH_AUTH_SOCK=$HOME/.ssh/ssh-agent.sock
 
     SSH_AGENT_WORKING=$(ssh-add -l >/dev/null 2>&1; echo $?)
@@ -66,3 +86,4 @@ if [[ -f $ONEDRIVE/Documents/PowerShell/profile.ps1 ]]; then
     ln -s $ONEDRIVE/Documents/PowerShell/profile.ps1 $HOME/.config/powershell/profile.ps1
   fi
 fi
+export PATH=$PATH:/Users/wd/.config/agency/CurrentVersion

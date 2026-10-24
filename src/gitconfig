@@ -1,0 +1,57 @@
+[user]
+	email = wd@teleri.net
+	name = Chip Locke
+[push]
+	default = current
+	autoSetupRemote = true
+[code]
+	editor = code --wait
+[pull]
+	ff = only
+[init]
+	defaultBranch = main
+[log]
+	follow = true
+[core]
+	autocrlf = input
+	packedGitLimit = 512m
+	packedGitWindowSize = 512m
+	fsmonitor = true
+	editor = code --wait
+	pager = delta
+	untrackedCache = true
+[feature]
+	manyFiles = true
+[pack]
+	writereverseindex = true
+[checkout]
+	workers = 0
+[fetch]
+	writeCommitGraph = true
+	prune = true
+	pruneTags = true
+[merge]
+	tool = code
+[mergetool "code"]
+	cmd = code --wait $MERGED
+	trustExitCode = true
+[mergetool]
+	keepBackup = false
+[diff]
+	tool = code
+[difftool "code"]
+	cmd = code --wait --diff $LOCAL $REMOTE
+	trustExitCode = true
+[difftool]
+	keepBackup = false
+[interactive]
+	diffFilter = delta --color-only
+[delta]
+	navigate = true
+	syntax-theme = Visual Studio Dark+
+	line-numbers = true
+[includeIf "gitdir:~/src/work/**"]
+    path = ~/src/work/.gitconfig
+# machine-/work-specific settings (credential helpers, etc.) live outside the repo
+[include]
+	path = ~/.gitconfig.local

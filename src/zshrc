@@ -3,9 +3,8 @@
 # aliases, and whatever other "interactive goodies" you desire.
 
 # prefer starship over pl10k if present
-if command_exists starship; then
+if (( $+commands[starship] )); then
   eval "$(starship init zsh)"
-  _NO_PL10K=1
 fi
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -15,7 +14,7 @@ fi
 # 1. vim/vi as default (as available)
 # 2. VS Code in same window if $TERM_PROGRAM is set to 'vscode' (e.g. in a VCSCode terminal or remote session)
 # 3. VS Code in new window if not in a remote (ssh) session and VS Code is installed
-if command_exists vim; then
+if (( $+commands[vim] )); then
   export EDITOR=vim
 else
   export EDITOR=vi
@@ -24,7 +23,7 @@ if [[ "$TERM_PROGRAM" == "vscode" ]]; then
   # reasonable to expect `code` works here since we're in VS Code wrapping $somehow
   export EDITOR='code --wait'
   alias code='code --reuse-window'
-elif [[ -z "$SSH_CONNECTION" ]] && command_exists code; then
+elif [[ -z "$SSH_CONNECTION" ]] && (( $+commands[code] )); then
   export EDITOR='code --new-window --wait'
   alias code='code --new-window'
 fi
@@ -36,7 +35,7 @@ fi
 export VISUAL="$EDITOR"
 # otherwise I guess just whatever $EDITOR is. /shrug
 
-if command_exists rg; then
+if (( $+commands[rg] )); then
   alias rg='rg --hidden --smart-case'
   alias sgrep='rg -i --context=2 --color=auto --hidden'
 else
@@ -44,7 +43,7 @@ else
 fi
 alias sg=sgrep
 
-if [[ -z "$SSH_AUTH_SOCK" && $(command_exists ssh-add) ]]; then
+if [[ -z "$SSH_AUTH_SOCK" && (( $+commands[ssh-add] )) ]]; then
   eval `ssh-agent -s` 2>&1 > /dev/null
 fi
 
@@ -55,16 +54,9 @@ alias findi='find . -iname'
 alias findn='find . -name'
 alias grepi='grep -i'
 alias tmpssh='ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
-if command_exists fd; then
+if (( $+commands[fd] )); then
   alias fd='fd --hidden'
 fi
-
-# XXX: 2025-08-26 OMZ is really pissing me off. it shits itself with uutils-coreutils instead of GNU coreutils, need
-# to purge OMZ, but for now just don't use this
-# # for macOS, if we have uutils-coreutils homebrew package, prefer `uls` over macOS `ls`
-# if [[ "${OSTYPE#*darwin}" != "$OSTYPE" ]] && brew ls --versions uutils-coreutils >/dev/null 2>&1 && command_exists uls; then
-#   alias ls='uls --color=auto --group-directories-first --classify=auto'
-# fi
 
 # ----------------------------------------------------------------------------------------------------------------------
 # OMZ setup here
@@ -76,9 +68,6 @@ export ZSH_CUSTOM="$ZSH/custom"
 # install omz+pl10k if missing
 if [[ ! -d $ZSH ]]; then
   sh -c "$(curl -fsSL https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --keep-zshrc --unattended
-  if [[ ! -d "$ZSH_CUSTOM/themes/powerlevel10k" && -z "$_NO_PL10K" ]]; then
-    git clone --depth=1 https://github.com/romkatv/powerlevel10k.git ${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/themes/powerlevel10k
-  fi
   if [[ ! -d "$ZSH_CUSTOM/plugins/zsh-syntax-highlighting" ]]; then
     git clone https://github.com/zsh-users/zsh-syntax-highlighting.git ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-syntax-highlighting
   fi
@@ -92,23 +81,16 @@ if [[ ! -d $ZSH ]]; then
   echo
 fi
 
-# Enable Powerlevel10k instant prompt. Should stay close to the top of ~/.zshrc.
-# Initialization code that may require console input (password prompts, [y/n]
-# confirmations, etc.) must go above this block; everything else may go below.
-if [[ -z "$_NO_PL10K" && -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
-  source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
-fi
-
 # Set name of the theme to load --- if set to "random", it will
 # load a random theme each time oh-my-zshis loaded, in which case,
 # to know which specific one was loaded, run: echo $RANDOM_THEME
 # See https://github.com/ohmyzsh/ohmyzsh/wiki/Themes
-[[ -z "$_NO_PL10K" ]] && ZSH_THEME="powerlevel10k/powerlevel10k"
 ZSH_COLORIZE_STYLE="monokai"
 ZSH_COLORIZE_CHROMA_FORMATTER="terminal16m"
 
 # Uncomment the following line to display red dots whilst waiting for completion.
-COMPLETION_WAITING_DOTS="true"
+# NOTE: seems to break multiline prompts w/ fzf-tab
+# COMPLETION_WAITING_DOTS="true"
 
 # This is the goober that dumps inverted %/# marks when you `cat` a file with no trailing newline.
 # I do not like that.
@@ -119,12 +101,12 @@ PROMPT_EOL_MARK=''
 plugins=(colorize zsh-syntax-highlighting)
 
 # Plugins that don't directly map to the executable name
-command_exists apt && plugins+=(debian)
-command_exists az  && plugins+=(azure)
+(( $+commands[apt] )) && plugins+=(debian)
+(( $+commands[az] ))  && plugins+=(azure)
 
 # Plugins with 1:1 executable mappings, plus a special case for fzf
 for p in brew docker fzf git dotnet kubectl; do
-  if command_exists "$p"; then
+  if (( $+commands[$p] )); then
     plugins+=("$p")
     [[ "$p" == "fzf" ]] && plugins+=(fzf-tab)
   fi
@@ -139,6 +121,8 @@ fi
 # The following lines were added by compinstall
 
 zstyle ':completion:*' completer _expand _complete _ignored _approximate
+# enables completion into subdirectories (can maybe retire `fdc` below if this does what i want)
+zstyle ':completion:*' matcher-list 'r:|/=* r:|=*'
 zstyle ':completion:*' list-colors ${(s.:.)LS_COLORS}
 zstyle ':completion:*' list-prompt %SAt %p: Hit TAB for more, or the character to insert%s
 zstyle ':completion:*' max-errors 3
@@ -146,8 +130,28 @@ zstyle ':completion:*' menu select=1
 zstyle ':completion:*' select-prompt %SScrolling active: current selection at %p%s
 zstyle :compinstall filename "$HOME/.zshrc"
 
+# try out file/dir previews in fzf-tab if all the requisite goo is available
+if (( $+commands[fzf] )); then
+  # use a preview window for suitably wide terminals, note that characters are about half as wide as they are tall
+  # (although this varies by font, etc) so just use a pretty simple heuristic here
+  # ~21:9 or wider
+  if (( ($COLUMNS * 0.5 / $LINES) >= 2.3 )); then
+    zstyle ':fzf-tab:*' fzf-flags '--preview-window=right:70%'
+  # ~16:9
+  elif (( ($COLUMNS * 0.5 / $LINES) >= 1.5 )); then
+    zstyle ':fzf-tab:*' fzf-flags '--preview-window=right:50%'
+  fi
+
+  if (( $+commands[bat] )) && (( $+commands[uu-ls] )); then
+    zstyle ':fzf-tab:complete:*:*' fzf-preview '[[ -d $realpath ]] && uu-ls -1 --color=always $realpath || bat --color=always --style=numbers --line-range=:500 $realpath'
+  fi
+  if (( $+commands[git] )) && (( $+commands[delta] )); then
+    zstyle ':fzf-tab:complete:git-checkout:*' fzf-preview 'git diff --color=always $word | delta'
+  fi
+fi
+
 # load homebrew completions if available
-command_exists brew && FPATH="$(brew --prefix)/share/zsh/site-functions:${FPATH}"
+(( $+commands[brew] )) && FPATH="$(brew --prefix)/share/zsh/site-functions:${FPATH}"
 
 autoload -Uz compinit
 # End of lines added by compinstall
@@ -164,8 +168,16 @@ source $ZSH/oh-my-zsh.sh
 # OMZ forces this back on and it's very rude
 unsetopt sharehistory
 
-# done looking for commands at this point, clean up the function (this lives in zshenv)
-unset -f command_exists
+# XXX: 2025-08-26 OMZ is really pissing me off. it shits itself with uutils-coreutils instead of GNU coreutils, need
+# to purge OMZ, but for now just don't use this
+# for macOS, if we have uutils-coreutils homebrew package, prefer `uu-ls` over macOS `ls`
+# more tweaking, just use uutils coreutils always if available, `uu-ls` is meaningfully distinct enough to
+# just grab it
+#if [[ "${OSTYPE#*darwin}" != "$OSTYPE" ]] && brew ls --versions uutils-coreutils >/dev/null 2>&1 && (( $+commands[uu-ls] )); then
+if (( $+commands[uu-ls] )); then
+  alias ls='uu-ls --color=auto --group-directories-first --classify=auto --almost-all'
+fi
+
 
 # ----------------------------------------------------------------------------------------------------------------------------------
 # fdc - find a file with a partial name, case-insensitive, if there is a single match open in vs code,
@@ -204,54 +216,69 @@ function fdc() {
 # ----------------------------------------------------------------------------------------------------------------------------------
 # work goop
 
-vienna_venv() {
-    if [[ "$VIRTUAL_ENV" == "" ]]; then
-        examine_dir=$PWD
-    # when launching in vscode (e.g.) we may already be in a venv
-    elif [[ -n "$VIRTUAL_ENV" && "$1" == "init" ]]; then
-        examine_dir=$VIRTUAL_ENV
-    else
-        return
+_k8sinfra_venv() {
+  if [[ "$TERM_PROGRAM" == "vscode" ]]; then
+    # in vscode, we may already be in a venv, so don't override that
+    return
+  fi
+
+  if [[ "$VIRTUAL_ENV" == "" ]]; then
+    examine_dir=$PWD
+  # when launching in vscode (e.g.) we may already be in a venv
+  elif [[ -n "$VIRTUAL_ENV" && "$1" == "init" ]]; then
+    examine_dir=$VIRTUAL_ENV
+  else
+    return
+  fi
+
+  case $examine_dir in
+    $HOME/src/work/k8sinfra2*)
+      venv_path=~/src/work/k8sinfra2/src/msftkube/.venv
+      ;;
+    $HOME/src/work/k8sinfra3*)
+      venv_path=~/src/work/k8sinfra3/src/msftkube/.venv
+      ;;
+    $HOME/src/work/*)
+      venv_path=~/src/work/k8sinfra/src/msftkube/.venv
+      ;;
+    *)
+      ;;
+  esac
+
+  if [[ -d $venv_path ]]; then
+    if [[ -z "$VIRTUAL_ENV" ]]; then
+      source $venv_path/bin/activate
     fi
 
-    case $examine_dir in
-        $HOME/src/aml/vienna2*)
-            venv_path=~/.venvs/vienna2
-            ;;
-        $HOME/src/aml/vienna3*)
-            venv_path=~/.venvs/vienna3
-            ;;
-        $HOME/src/aml/*)
-            venv_path=~/.venvs/vienna
-            ;;
-        *)
-            ;;
-    esac
-
-    if [[ -d $venv_path ]]; then
-        export MSFTKUBE_VENV_PATH=$venv_path
-
-        if [[ -z "$VIRTUAL_ENV" ]]; then
-            source $venv_path/bin/activate
-        fi
-
-        if [[ -f "$venv_path/pyvenv.cfg" && `grep 'uv' $venv_path/pyvenv.cfg` ]]; then
-            alias pip='uv pip'
-        fi
+    if [[ -f "$venv_path/pyvenv.cfg" && `grep 'uv' $venv_path/pyvenv.cfg` ]]; then
+      alias pip='uv pip'
     fi
+  fi
 
-    if which msftkube > /dev/null; then
-        alias mk=msftkube
-        eval "$(register-python-argcomplete msftkube)"
+  if which msftkube > /dev/null; then
+    alias mk=msftkube
+    if (( $+commands[register-python-argcomplete] )); then
+      eval "$(register-python-argcomplete msftkube)"
     fi
+  fi
 }
 
 autoload -U add-zsh-hook
-add-zsh-hook chpwd vienna_venv
+add-zsh-hook chpwd _k8sinfra_venv
 # run once to handle direct launches into a venv-eligible directory
-vienna_venv init
+_k8sinfra_venv init
 
-# ----------------------------------------------------------------------------------------------------------------------------------
-# To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
-[[ ! -f ~/.p10k.zsh || -n "$_NO_PL10K" ]] || source ~/.p10k.zsh
+# BEGIN Agency MANAGED BLOCK
+if [[ -d "$HOME/.config/agency/CurrentVersion" && ":${PATH}:" != *":$HOME/.config/agency/CurrentVersion:"* ]]; then
+    export PATH="$HOME/.config/agency/CurrentVersion:${PATH}"
+fi
+# END Agency MANAGED BLOCK
 
+# BEGIN claude-cli MANAGED BLOCK
+if [[ ":${PATH}:" != *":/Users/wd/.claude-cli/CurrentVersion:"* ]]; then
+    export PATH="/Users/wd/.claude-cli/CurrentVersion:${PATH}"
+fi
+# END claude-cli MANAGED BLOCK
+if command -v wt >/dev/null 2>&1; then eval "$(command wt config shell init zsh)"; fi
+
+fpath+=~/.zfunc; autoload -Uz compinit; compinit
