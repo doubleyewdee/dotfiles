@@ -28,7 +28,7 @@ if [[ "$(uname -s)" == "Darwin" ]]; then
   fi
 fi
 
-# OneDrive dotfiles
+# OneDrive (dotfiles themselves are managed by chezmoi, but the PowerShell profile still lives here)
 ONEDRIVE="$HOME/OneDrive"
 
 if (( $+commands[wslinfo] )); then
@@ -60,22 +60,6 @@ if (( $+commands[wslinfo] )); then
         (setsid socat UNIX-LISTEN:$SSH_AUTH_SOCK,fork EXEC:"npiperelay.exe -ei -s //./pipe/openssh-ssh-agent",nofork &) >/dev/null 2>&1
     fi
   fi
-fi
-
-if [[ -d $ONEDRIVE/tools/dotfiles ]]; then
-  for f in `ls -1 $ONEDRIVE/tools/dotfiles`; do
-    if [[ "$f" == "config" ]]; then
-      # a bunch of stuff lives in ~/.config, and it doesn't make sense to keep it all in OneDrive, so nest here
-      mkdir -p $HOME/.config
-      for cf in `ls -1 $ONEDRIVE/tools/dotfiles/config`; do
-        if [[ ! -e $HOME/.config/$cf ]]; then
-          ln -s $ONEDRIVE/tools/dotfiles/config/$cf $HOME/.config/$cf
-        fi
-      done
-    elif [[ ! -e $HOME/.$f ]]; then
-      ln -s $ONEDRIVE/tools/dotfiles/$f $HOME/.$f
-    fi
-  done
 fi
 
 if [[ -f $ONEDRIVE/Documents/PowerShell/profile.ps1 ]]; then

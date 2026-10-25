@@ -1,2 +1,2 @@
 # worktrunk machine state, not config
-src/config/worktrunk/approvals.toml*
+home/dot_config/worktrunk/approvals.toml*

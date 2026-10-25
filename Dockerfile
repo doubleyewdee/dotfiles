@@ -29,10 +29,6 @@ RUN apt update && apt install -y \
     tree \
     unzip \
     jq \
-    ripgrep \
-    fd-find \
-    bat \
-    fzf \
     && rm -rf /var/lib/apt/lists/*
 
 # Create non-root user
@@ -46,7 +42,12 @@ RUN /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/instal
 ENV PATH="/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:$PATH"
 
 RUN brew install \
+    bat \
+    chezmoi \
+    fd \
+    fzf \
     git-delta \
+    ripgrep \
     starship \
     uutils-coreutils
 
@@ -54,11 +55,8 @@ RUN brew install \
 FROM packages AS final
 USER ${NEW_USER}
 
-# Copy dotfiles from the repository
-# Note: Add your actual dotfiles as you create them
-COPY --chown=${NEW_USER}:${NEW_USER} src /home/${NEW_USER}/dotfiles/
-# just symlinking the three zsh dotfiles should be enough to make everything else get setup via those dotfiles
-RUN ln -s /home/${NEW_USER}/dotfiles/zshenv /home/${NEW_USER}/.zshenv
-RUN ln -s /home/${NEW_USER}/dotfiles/zshrc /home/${NEW_USER}/.zshrc
-RUN ln -s /home/${NEW_USER}/dotfiles/zprofile /home/${NEW_USER}/.zprofile
-CMD ["/bin/zsh", "--login"]
+# run.sh mounts the repo at ~/src/dotfiles; point chezmoi's default source dir at it so `chezmoi apply` inside the
+# container picks up edits made on the host without a rebuild
+RUN mkdir -p /home/${NEW_USER}/.local/share && \
+    ln -s /home/${NEW_USER}/src/dotfiles /home/${NEW_USER}/.local/share/chezmoi
+CMD ["/bin/sh", "-c", "chezmoi apply && exec /bin/zsh --login"]
