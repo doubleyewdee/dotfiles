@@ -31,7 +31,10 @@ untouched for machines that haven't migrated yet.
 2. **Move machine-specific config into local files** (see [Layers](#layers)), since the repo copies don't carry it:
    - Work machines: copy the work `[credential ...]` blocks (Azure Repos usernames/authority, the Git Credential
      Manager `helper` lines, `useHttpPath` for `dev.azure.com`) from `~/OneDrive/tools/dotfiles/gitconfig` into
-     `~/.gitconfig.local`.
+     `~/.gitconfig.local`. They're the tail of that file, so:
+     ```sh
+     sed -n '/^\[credential/,$p' ~/OneDrive/tools/dotfiles/gitconfig >> ~/.gitconfig.local
+     ```
    - Anything an installer appended to this machine's shell files that isn't in the repo goes in `~/.zshrc.local` /
      `~/.zshenv.local`.
 3. **Clone and preview** without applying:
