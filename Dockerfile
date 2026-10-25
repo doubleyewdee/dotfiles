@@ -59,4 +59,5 @@ USER ${NEW_USER}
 # container picks up edits made on the host without a rebuild
 RUN mkdir -p /home/${NEW_USER}/.local/share && \
     ln -s /home/${NEW_USER}/src/dotfiles /home/${NEW_USER}/.local/share/chezmoi
-CMD ["/bin/sh", "-c", "chezmoi apply && exec /bin/zsh --login"]
+# DOTFILES_WORK=true (see run.sh) answers chezmoi's `work` prompt to test the work-only layer
+CMD ["/bin/sh", "-c", "chezmoi init --apply --promptBool \"Work machine=${DOTFILES_WORK:-false}\" && exec /bin/zsh --login"]

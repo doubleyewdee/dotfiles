@@ -1,0 +1,5 @@
+{{- /* asked once at `chezmoi init`; re-ask with `chezmoi init --prompt`, or preset with `--promptBool "Work machine=true"` (keyed by prompt text) */ -}}
+{{- $work := promptBoolOnce . "work" "Work machine" false -}}
+
+[data]
+    work = {{ $work }}

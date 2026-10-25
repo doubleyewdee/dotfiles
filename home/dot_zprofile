@@ -1,7 +1,3 @@
-# The following lines were added by Docker Desktop to add commands to your PATH.
-export PATH="$PATH:/Users/wd/.docker/bin"
-# End of Docker Desktop section.
-
 # ----------------------------------------------------------------------------------------------------------------------
 # loaded after zshenv for *login shells only* (e.g. Terminal.app, iTerm2, etc.) and useful for setting session-wide
 # configurations
@@ -19,6 +15,11 @@ if [[ "$(uname -s)" == "Darwin" ]]; then
     if [[ -n "$DOTNET_ROOT" ]]; then
       path=($DOTNET_ROOT $path)
     fi
+  fi
+
+  # Docker Desktop CLI tools
+  if [[ -d "$HOME/.docker/bin" ]]; then
+    export PATH="$PATH:$HOME/.docker/bin"
   fi
 
   # use 1Password as SSH agent on macOS if auth socket is where we expect (this also prevents macOS from giving me
@@ -70,4 +71,3 @@ if [[ -f $ONEDRIVE/Documents/PowerShell/profile.ps1 ]]; then
     ln -s $ONEDRIVE/Documents/PowerShell/profile.ps1 $HOME/.config/powershell/profile.ps1
   fi
 fi
-export PATH=$PATH:/Users/wd/.config/agency/CurrentVersion

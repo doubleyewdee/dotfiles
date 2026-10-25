@@ -1,0 +1,4 @@
+{{- /* paths here are target paths (relative to $HOME), not source paths */ -}}
+{{ if not (and (hasKey . "work") .work) }}
+.config/zsh/work.*
+{{ end }}

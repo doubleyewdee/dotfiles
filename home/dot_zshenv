@@ -51,25 +51,16 @@ if [[ -f $HOME/.dircolors ]]; then
   fi
 fi
 
-# ----------------------------------------------------------------------------------------------------------------------------------
-# work goop
-# XXX: this almost certainly needs to move to some direnv config or something, terrible baseline and should not be in
-# my general dotfiles
-
-if [[ "$CPUTYPE" == "arm64" ]]; then
-  export DOCKER_DEFAULT_PLATFORM=linux/amd64
-fi
-
-if [[ -d $HOME/.ev2 ]]; then
-  export PATH="$HOME/.ev2:$PATH"
-fi
-
-# trying this out to get the credential provider to work with Entra instead of ADO PATs? no idea if this should help
-export NUGET_CREDENTIALPROVIDER_FORCE_CANSHOWDIALOG_TO="true"
-
 # general fzf options
 export FZF_DEFAULT_OPTS='--height 50% --popup bottom,50% --layout reverse --border top'
 
 if [[ -f "$HOME/.cargo/env" ]]; then
   source "$HOME/.cargo/env"
 fi
+
+# ----------------------------------------------------------------------------------------------------------------------------------
+# extra layers: chezmoi-managed optional bits (e.g. work.zshenv), then unmanaged per-machine config
+for f in $HOME/.config/zsh/*.zshenv(N) $HOME/.zshenv.local(N); do
+  source $f
+done
+unset f

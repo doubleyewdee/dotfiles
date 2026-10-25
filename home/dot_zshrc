@@ -2,7 +2,7 @@
 # loaded after zshenv and zprofile for *any interactive shell*, this is useful for managing prompt configurations,
 # aliases, and whatever other "interactive goodies" you desire.
 
-# prefer starship over pl10k if present
+# use starship for the prompt if present
 if (( $+commands[starship] )); then
   eval "$(starship init zsh)"
 fi
@@ -65,7 +65,7 @@ fi
 export ZSH="$HOME/.oh-my-zsh"
 export ZSH_CUSTOM="$ZSH/custom"
 
-# install omz+pl10k if missing
+# install omz + plugins if missing
 if [[ ! -d $ZSH ]]; then
   sh -c "$(curl -fsSL https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --keep-zshrc --unattended
   if [[ ! -d "$ZSH_CUSTOM/plugins/zsh-syntax-highlighting" ]]; then
@@ -76,7 +76,7 @@ if [[ ! -d $ZSH ]]; then
   fi
   echo
   printf "-%.0s" {1..$COLUMNS}
-  echo "Installed Oh-My-Zsh + Powerlevel 10k (maybe?) + syntax highlighting, this probably works? Good luck!"
+  echo "Installed Oh-My-Zsh + syntax highlighting + fzf-tab, this probably works? Good luck!"
   echo
   echo
 fi
@@ -152,6 +152,8 @@ fi
 
 # load homebrew completions if available
 (( $+commands[brew] )) && FPATH="$(brew --prefix)/share/zsh/site-functions:${FPATH}"
+# user completion functions, picked up by OMZ's compinit
+fpath+=~/.zfunc
 
 autoload -Uz compinit
 # End of lines added by compinstall
@@ -213,72 +215,17 @@ function fdc() {
     fi
 }
 
-# ----------------------------------------------------------------------------------------------------------------------------------
-# work goop
-
-_k8sinfra_venv() {
-  if [[ "$TERM_PROGRAM" == "vscode" ]]; then
-    # in vscode, we may already be in a venv, so don't override that
-    return
-  fi
-
-  if [[ "$VIRTUAL_ENV" == "" ]]; then
-    examine_dir=$PWD
-  # when launching in vscode (e.g.) we may already be in a venv
-  elif [[ -n "$VIRTUAL_ENV" && "$1" == "init" ]]; then
-    examine_dir=$VIRTUAL_ENV
-  else
-    return
-  fi
-
-  case $examine_dir in
-    $HOME/src/work/k8sinfra2*)
-      venv_path=~/src/work/k8sinfra2/src/msftkube/.venv
-      ;;
-    $HOME/src/work/k8sinfra3*)
-      venv_path=~/src/work/k8sinfra3/src/msftkube/.venv
-      ;;
-    $HOME/src/work/*)
-      venv_path=~/src/work/k8sinfra/src/msftkube/.venv
-      ;;
-    *)
-      ;;
-  esac
-
-  if [[ -d $venv_path ]]; then
-    if [[ -z "$VIRTUAL_ENV" ]]; then
-      source $venv_path/bin/activate
-    fi
-
-    if [[ -f "$venv_path/pyvenv.cfg" && `grep 'uv' $venv_path/pyvenv.cfg` ]]; then
-      alias pip='uv pip'
-    fi
-  fi
-
-  if which msftkube > /dev/null; then
-    alias mk=msftkube
-    if (( $+commands[register-python-argcomplete] )); then
-      eval "$(register-python-argcomplete msftkube)"
-    fi
-  fi
-}
-
-autoload -U add-zsh-hook
-add-zsh-hook chpwd _k8sinfra_venv
-# run once to handle direct launches into a venv-eligible directory
-_k8sinfra_venv init
-
-# BEGIN Agency MANAGED BLOCK
-if [[ -d "$HOME/.config/agency/CurrentVersion" && ":${PATH}:" != *":$HOME/.config/agency/CurrentVersion:"* ]]; then
-    export PATH="$HOME/.config/agency/CurrentVersion:${PATH}"
-fi
-# END Agency MANAGED BLOCK
-
 # BEGIN claude-cli MANAGED BLOCK
-if [[ ":${PATH}:" != *":/Users/wd/.claude-cli/CurrentVersion:"* ]]; then
-    export PATH="/Users/wd/.claude-cli/CurrentVersion:${PATH}"
+if [[ -d "$HOME/.claude-cli/CurrentVersion" && ":${PATH}:" != *":$HOME/.claude-cli/CurrentVersion:"* ]]; then
+    export PATH="$HOME/.claude-cli/CurrentVersion:${PATH}"
 fi
 # END claude-cli MANAGED BLOCK
 if command -v wt >/dev/null 2>&1; then eval "$(command wt config shell init zsh)"; fi
 
-fpath+=~/.zfunc; autoload -Uz compinit; compinit
+# ----------------------------------------------------------------------------------------------------------------------------------
+# extra layers: chezmoi-managed optional bits (e.g. work.zshrc), then unmanaged per-machine config. tools that want to
+# append to ~/.zshrc should go in ~/.zshrc.local instead, since `chezmoi apply` will overwrite ~/.zshrc.
+for f in $HOME/.config/zsh/*.zshrc(N) $HOME/.zshrc.local(N); do
+  source $f
+done
+unset f
