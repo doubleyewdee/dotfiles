@@ -5,6 +5,65 @@ The repo is cloned to `~/.dotfiles` on most machines (anywhere works; `init --so
 `~/.config/chezmoi/chezmoi.toml`). chezmoi copies files into `$HOME` rather than symlinking them, so edits go through
 the repo and `chezmoi apply`.
 
+## Bootstrap a brand-new machine
+Best-effort walkthrough from a factory-fresh machine to a working shell. The dotfiles themselves only *require* zsh,
+git, curl and chezmoi; everything else they reference is picked up if present and skipped if not.
+
+### What the dotfiles expect
+| Need | Why | Without it |
+|---|---|---|
+| zsh, git, curl | login shell; `.zshrc` clones oh-my-zsh + plugins on first run | won't work |
+| chezmoi | installs/updates the dotfiles | won't work |
+| SSH key on GitHub (1Password agent on macOS) | `--ssh` clone, so you can push | use the read-only HTTPS clone |
+| Homebrew | `.zshenv`/`.zprofile` load `brew shellenv` from `/opt/homebrew` or `/home/linuxbrew` | fine, you just install tools some other way |
+| A [Nerd Font](https://www.nerdfonts.com/) in the terminal | starship prompt glyphs | prompt shows tofu boxes |
+| starship, fzf, fd, bat, ripgrep, git-delta, uutils-coreutils | prompt, fzf-tab previews, `ls`/`rg`/`fd` aliases, `dircolors` | features quietly off, **except delta**: `.gitconfig` sets it as the pager, so `git diff`/`log` error without it |
+| VS Code with `code` on PATH | `$EDITOR`, git editor/diff/merge tool | `$EDITOR` falls back to vim; git editor/mergetool calls fail |
+| Git Credential Manager (work) | Azure Repos auth via `~/.gitconfig.local` | only needed on work machines |
+
+### macOS
+Order matters mostly because each step unlocks the next (Homebrew installs everything, 1Password holds the SSH key
+for the clone). Run steps 1–5 in the same terminal, or redo the `export`/`eval` lines in a new one.
+
+1. **Homebrew** (also installs the Xcode Command Line Tools, which brings git). Needs an admin account; on a managed
+   work Mac, elevate first if IT requires it.
+   ```sh
+   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+   eval "$(/opt/homebrew/bin/brew shellenv)"
+   ```
+2. **Apps**: terminal, password manager, editor, and a Nerd Font (any; JetBrains Mono shown).
+   ```sh
+   brew install --cask 1password iterm2 visual-studio-code font-jetbrains-mono-nerd-font
+   ```
+   Then set the font in iTerm2 → Settings → Profiles → Text. Switching to iTerm2 now is fine, as long as you redo the
+   `eval` line from step 1 there.
+3. **1Password SSH agent**: sign in, then Settings → Developer → *Use the SSH agent*. Point this shell at it (the
+   dotfiles do this automatically from then on) and check GitHub auth, which also accepts GitHub's host key:
+   ```sh
+   export SSH_AUTH_SOCK=~/Library/Group\ Containers/2BUA8C4S2C.com.1password/t/agent.sock
+   ssh -T git@github.com   # "Hi doubleyewdee! You've successfully authenticated..."
+   ```
+4. **CLI tools** the dotfiles use:
+   ```sh
+   brew install chezmoi starship fzf fd bat ripgrep git-delta uutils-coreutils neovim
+   brew install --cask git-credential-manager   # work machines
+   ```
+   worktrunk (`wt`), if wanted: see [worktrunk.dev](https://worktrunk.dev).
+5. **Dotfiles**: answer the *Work machine* prompt, then see [Layers](#layers) for `~/.gitconfig.local`.
+   ```sh
+   chezmoi init --apply --ssh --source ~/.dotfiles doubleyewdee
+   ```
+6. **Open a new terminal tab.** The first shell installs oh-my-zsh, zsh-syntax-highlighting and fzf-tab, then you're
+   set. `chezmoi doctor` is handy if anything looks off.
+
+Not covered by this repo (yet): iTerm2 preferences, Hammerspoon config, VS Code settings (use Settings Sync).
+
+### Linux / WSL / remotes
+Install `zsh git curl` from the distro (`sudo apt install zsh git curl` on Debian/Ubuntu) and `chsh -s $(which zsh)`,
+then use the read-only one-liner in [Install on a new machine](#install-on-a-new-machine). Homebrew (linuxbrew) plus
+the same `brew install` line as macOS step 4 gets the full toolset; distro packages also work, except that Debian's
+`fzf` is too old for the `FZF_DEFAULT_OPTS` in `.zshenv` and its `fd`/`bat` are renamed `fdfind`/`batcat`.
+
 ## Install on a new machine
 Pick a flavor based on whether you'll be editing dotfiles from this machine:
 
