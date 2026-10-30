@@ -14,10 +14,11 @@ typeset -U path
 # look for Linux user-mode .NET install in the usual place and bring it in if so
 if test -d $HOME/.dotnet && test -x $HOME/.dotnet/dotnet; then
   export DOTNET_ROOT=$HOME/.dotnet
-  export PATH=$PATH:$DOTNET_ROOT
-  if test -d $DOTNET_ROOT/tools; then
-    export PATH=$PATH:$DOTNET_ROOT/tools
-  fi
+  path+=("$DOTNET_ROOT")
+fi
+# independently, if `dotnet` is available, look for ~/.dotnet/tools
+if (( $+commands[dotnet] )) && test -d $HOME/.dotnet/tools; then
+  path+=("$HOME/.dotnet/tools")
 fi
 
 if (( $+commands[go] )); then
