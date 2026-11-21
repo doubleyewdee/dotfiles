@@ -1,37 +1,40 @@
 # work-only interactive config, sourced from ~/.zshrc; only installed by chezmoi when the `work` flag is set
 
 _k8sinfra_venv() {
-  if [[ "$TERM_PROGRAM" == "vscode" ]]; then
-    # in vscode, we may already be in a venv, so don't override that
-    return
-  fi
+  local examine_dir venv_path
+  local switch_venv=0
 
-  if [[ "$VIRTUAL_ENV" == "" ]]; then
-    examine_dir=$PWD
-  # when launching in vscode (e.g.) we may already be in a venv
-  elif [[ -n "$VIRTUAL_ENV" && "$1" == "init" ]]; then
-    examine_dir=$VIRTUAL_ENV
-  else
-    return
-  fi
-
-  case $examine_dir in
-    $HOME/src/work/k8sinfra2*)
-      venv_path=~/src/work/k8sinfra2/src/msftkube/.venv
-      ;;
-    $HOME/src/work/k8sinfra3*)
-      venv_path=~/src/work/k8sinfra3/src/msftkube/.venv
-      ;;
-    $HOME/src/work/*)
-      venv_path=~/src/work/k8sinfra/src/msftkube/.venv
+  case "$PWD" in
+    "$HOME"/src/work/.worktrees/k8sinfra.?*)
+      examine_dir=${PWD#"$HOME/src/work/.worktrees/"}
+      venv_path="$HOME/src/work/.worktrees/${examine_dir%%/*}/src/msftkube/.venv"
+      switch_venv=1
       ;;
     *)
+      if [[ "$TERM_PROGRAM" == "vscode" ]]; then
+        # Outside worktrees, leave VS Code's environment alone.
+        return
+      fi
+
+      if [[ -z "$VIRTUAL_ENV" ]]; then
+        examine_dir=$PWD
+      elif [[ "$1" == "init" ]]; then
+        examine_dir=$VIRTUAL_ENV
+      else
+        return
+      fi
+
+      case "$examine_dir" in
+        "$HOME"/src/work/*)
+          venv_path="$HOME/src/work/k8sinfra/src/msftkube/.venv"
+          ;;
+      esac
       ;;
   esac
 
   if [[ -d $venv_path ]]; then
-    if [[ -z "$VIRTUAL_ENV" ]]; then
-      source $venv_path/bin/activate
+    if [[ "$VIRTUAL_ENV" != "$venv_path" && ( -z "$VIRTUAL_ENV" || "$switch_venv" == 1 ) ]]; then
+      source "$venv_path/bin/activate" || return
     fi
 
     if [[ -f "$venv_path/pyvenv.cfg" && `grep 'uv' $venv_path/pyvenv.cfg` ]]; then
